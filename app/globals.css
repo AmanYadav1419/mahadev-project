@@ -1,1 +1,41 @@
+/* Google Fonts must be first — before @import "tailwindcss" */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+
+@theme {
+  --color-accent: #fb923c;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  background-color: #000;
+  color: #fff;
+  font-family: var(--font-sans);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Slow ambient Ken Burns pan — GPU composited via will-change */
+@keyframes sway {
+  0%   { transform: scale(1.0)  translate(0px,  0px); }
+  50%  { transform: scale(1.06) translate(-8px, 4px);  }
+  100% { transform: scale(1.03) translate(6px, -3px);  }
+}
+.animate-sway {
+  animation: sway 50s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Blinking colon for the IST clock */
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-start infinite;
+}

@@ -37,7 +37,7 @@ export const BACKGROUNDS: BgMedia[] = [
     {
         id: "ravana-dhyan",
         type: "image",
-        src: "/Deities_meditating_while_Ravana_._202608231209.jpeg",
+        src: "/deities-meditating-ravana.jpeg",
         duration: 12,
     },
     {

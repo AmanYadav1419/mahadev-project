@@ -152,13 +152,13 @@ function Transport({
     large?: boolean;
 }) {
     const btn =
-        "flex items-center justify-center rounded-full transition-all duration-150 active:scale-90";
+        "flex items-center justify-center rounded-full transition-all duration-150 active:scale-90 shrink-0";
     return (
-        <div className="flex items-center gap-4">
+        <div className={`flex items-center ${large ? "gap-3" : "gap-4"}`}>
             <button
                 onClick={onPrev}
                 aria-label="Previous"
-                className={`${btn} w-10 h-10 text-white/70 hover:text-white hover:bg-white/10`}
+                className={`${btn} ${large ? "w-11 h-11" : "w-10 h-10"} text-white/70 hover:text-white hover:bg-white/10`}
             >
                 <IcoPrev />
             </button>
@@ -167,7 +167,7 @@ function Transport({
             <button
                 onClick={onPlay}
                 aria-label={playing ? "Pause" : "Play"}
-                className={`${btn} ${large ? "w-16 h-16" : "w-12 h-12"} bg-gradient-to-b from-amber-400 to-orange-600 text-black shadow-[0_0_24px_rgba(251,146,60,0.45)] hover:shadow-[0_0_36px_rgba(251,146,60,0.65)] ring-1 ring-white/20 hover:scale-105`}
+                className={`${btn} ${large ? "w-14 h-14" : "w-12 h-12"} bg-gradient-to-b from-amber-400 to-orange-600 text-black shadow-[0_0_24px_rgba(251,146,60,0.45)] hover:shadow-[0_0_36px_rgba(251,146,60,0.65)] ring-1 ring-white/20 hover:scale-105`}
             >
                 {playing ? <IcoPause /> : <IcoPlay />}
             </button>
@@ -175,7 +175,7 @@ function Transport({
             <button
                 onClick={onNext}
                 aria-label="Next"
-                className={`${btn} w-10 h-10 text-white/70 hover:text-white hover:bg-white/10`}
+                className={`${btn} ${large ? "w-11 h-11" : "w-10 h-10"} text-white/70 hover:text-white hover:bg-white/10`}
             >
                 <IcoNext />
             </button>
@@ -478,10 +478,11 @@ export function ClientApp({
             </div>
 
             {/* ── MOBILE PLAYER  ─  stacked card ──────────────────── */}
-            <div className={`sm:hidden w-full rounded-[28px] flex flex-col items-center gap-0 overflow-hidden ${glass}`}>
+            <div className={`sm:hidden w-full rounded-[24px] flex flex-col items-center gap-0 overflow-hidden ${glass}`}>
 
-                {/* Top banner: thumbnail letterboxed in aspect-video */}
-                <div className="relative w-full aspect-video bg-black overflow-hidden">
+                {/* Top banner: thumbnail letterboxed, height capped so it
+                    never eats the transport controls on short viewports */}
+                <div className="relative w-full aspect-video max-h-[32vh] bg-black overflow-hidden">
                     {track.videoId && (
                         <img
                             key={track.videoId}
@@ -495,17 +496,17 @@ export function ClientApp({
                 </div>
 
                 {/* Info row */}
-                <div className="w-full px-5 pt-3 pb-0">
-                    <p className="text-[16px] font-semibold text-white leading-tight truncate">{displayTitle}</p>
+                <div className="w-full px-4 pt-3 pb-0 min-w-0">
+                    <p className="text-[15px] font-semibold text-white leading-tight truncate">{displayTitle}</p>
                     <p className="text-[12px] text-white/50 mt-0.5 truncate">{displayArtist}</p>
                 </div>
 
                 {/* Seek */}
-                <div className="w-full px-4">
+                <div className="w-full px-3">
                     <Seekbar ytRef={ytRef} playing={playing} duration={duration} />
                 </div>
 
-                <div className="w-full px-5 flex items-center justify-between">
+                <div className="w-full px-4 flex items-center justify-between gap-2">
                     <TimeLabel ytRef={ytRef} playing={playing} duration={duration} />
                     <button
                         type="button"
@@ -514,13 +515,13 @@ export function ClientApp({
                         setQueueOpen(true);
                     }}
                         aria-label="Open playlist"
-                        className="flex items-center justify-center w-11 h-11 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+                        className="flex items-center justify-center w-11 h-11 shrink-0 rounded-full text-white/70 hover:text-white hover:bg-white/10"
                     >
                         <IcoList />
                     </button>
                 </div>
 
-                <div className="w-full px-5 pb-5 flex items-center justify-center">
+                <div className="w-full px-4 pb-4 flex items-center justify-center">
                     <Transport playing={playing} onPrev={goPrev} onPlay={togglePlay} onNext={goNext} large />
                 </div>
             </div>

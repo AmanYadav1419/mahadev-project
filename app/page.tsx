@@ -15,32 +15,32 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
   try {
     content = await fs.readFile(filePath, "utf-8");
   } catch {
-    return { "Mahadev": [] };
+    return { Mahadev: [] };
   }
 
   const playlists: Record<string, Track[]> = {};
   let currentPlaylist = "Mahadev";
   playlists[currentPlaylist] = [];
 
-  const lines = content.replace(/\r/g, '').split('\n');
+  const lines = content.replace(/\r/g, "").split("\n");
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.startsWith('##')) {
-      currentPlaylist = trimmed.replace('##', '').trim();
+    if (trimmed.startsWith("##")) {
+      currentPlaylist = trimmed.replace("##", "").trim();
       if (!playlists[currentPlaylist]) playlists[currentPlaylist] = [];
-    } else if (trimmed.startsWith('http')) {
+    } else if (trimmed.startsWith("http")) {
       let rawId = "";
       try {
         const urlObj = new URL(trimmed);
-        if (urlObj.hostname.includes('youtube.com')) {
-          rawId = urlObj.searchParams.get('v') || "";
-        } else if (urlObj.hostname.includes('youtu.be')) {
+        if (urlObj.hostname.includes("youtube.com")) {
+          rawId = urlObj.searchParams.get("v") || "";
+        } else if (urlObj.hostname.includes("youtu.be")) {
           rawId = urlObj.pathname.slice(1);
         }
-      } catch { }
+      } catch {}
 
-      const videoId = rawId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 11);
+      const videoId = rawId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 11);
 
       if (videoId.length === 11) {
         playlists[currentPlaylist].push({
@@ -50,7 +50,7 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
           artist: "Mahadev Radio",
           year: new Date().getFullYear(),
           duration: 0,
-          url: trimmed
+          url: trimmed,
         } as Track);
       }
     }
@@ -62,9 +62,12 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
         playlists[playlistKey].map(async (track) => {
           try {
             const standardUrl = `https://www.youtube.com/watch?v=${track.videoId}`;
-            const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(standardUrl)}&format=json`, {
-              next: { revalidate: 3600 }
-            });
+            const res = await fetch(
+              `https://www.youtube.com/oembed?url=${encodeURIComponent(standardUrl)}&format=json`,
+              {
+                next: { revalidate: 3600 },
+              },
+            );
             if (res.ok) {
               const data = await res.json();
               track.title = data.title;
@@ -73,22 +76,30 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
           } catch {
             // UI falls back to YouTube player metadata.
           }
-        })
+        }),
       );
-    })
+    }),
   );
 
-  Object.keys(playlists).forEach(k => {
+  Object.keys(playlists).forEach((k) => {
     if (playlists[k].length === 0) delete playlists[k];
   });
 
   if (Object.keys(playlists).length === 0) {
-    playlists["Default"] = [{ id: '1', videoId: 'jfKfPfyJRdk', title: 'lofi hip hop radio', artist: 'Lofi Girl', duration: 0, year: 2022 } as Track];
+    playlists["Default"] = [
+      {
+        id: "1",
+        videoId: "jfKfPfyJRdk",
+        title: "lofi hip hop radio",
+        artist: "Lofi Girl",
+        duration: 0,
+        year: 2022,
+      } as Track,
+    ];
   }
 
   return playlists;
 }
-
 
 export default async function Home() {
   const playlists = await getPlaylists();
@@ -105,7 +116,12 @@ export default async function Home() {
       <div className="fixed inset-0 z-[2] mix-blend-overlay opacity-30 pointer-events-none">
         <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
           <filter id="noiseFilter">
-            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.65"
+              numOctaves="3"
+              stitchTiles="stitch"
+            />
           </filter>
           <rect width="100%" height="100%" filter="url(#noiseFilter)" />
         </svg>
@@ -124,8 +140,30 @@ export default async function Home() {
           </h1>
         </div>
         <div className="flex-1 text-right hidden sm:flex items-center justify-end gap-5 pointer-events-auto pr-2 text-[10px] font-medium tracking-widest text-white/50">
-          <a href="#" className="hover:text-orange-400 transition-colors">TWITTER</a>
-          <a href="#" className="hover:text-orange-400 transition-colors">GITHUB</a>
+          <a
+            href="https://www.instagram.com/aman_yadav1419/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-orange-400 transition-colors"
+          >
+            Instagram
+          </a>
+          <a
+            href="https://x.com/Aman_Yadav1419"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-orange-400 transition-colors"
+          >
+            Twitter
+          </a>
+          <a
+            href="https://aman-yadav1419-portfolio.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-orange-400 transition-colors"
+          >
+            Portfolio
+          </a>
         </div>
         <div className="flex-1 sm:hidden" />
       </header>
@@ -135,8 +173,9 @@ export default async function Home() {
       <div className="w-full max-w-[640px] pb-[max(2rem,env(safe-area-inset-bottom))] px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] z-10 pointer-events-auto">
         <ClientApp playlists={playlists} />
         <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35 px-4">
-          Free {trackCount}-track Mahadev song playlist — Shiva bhajans, Har Har Mahadev, and bhakti radio.
-          Audio plays through YouTube; rights remain with the original artists and labels.
+          Free {trackCount}-track Mahadev song playlist — Shiva bhajans, Har Har
+          Mahadev, and bhakti radio. Audio plays through YouTube; rights remain
+          with the original artists and labels.
         </p>
         {/* SEO copy parked — restore when the player layout needs it
         <section className="mt-4 mb-2 px-4 max-w-xl mx-auto text-white/40 text-[11px] leading-relaxed space-y-2">

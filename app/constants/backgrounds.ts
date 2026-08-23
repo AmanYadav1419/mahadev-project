@@ -7,7 +7,7 @@
  *     • type: "image" | "video"
  *     • src:  path relative to /public   (e.g. "/my-image.jpg")
  *     • duration: seconds to show before moving to the next slide
- *     • portrait (optional): a separate src shown on portrait/mobile screens
+ *     • portrait (optional): a separate src shown on narrow/mobile screens
  *
  *  The slideshow component handles everything else automatically.
  * ─────────────────────────────────────────────────────────────────────
@@ -25,25 +25,39 @@ export type BgMedia = {
     duration?: number;
 };
 
-/** Master list — edit freely */
+/** Master list — edit freely. Prefer JPEG/WebP over large PNGs. */
 export const BACKGROUNDS: BgMedia[] = [
+    {
+        id: "kailash-peak",
+        type: "image",
+        src: "/Deities_meditating_on_mountain_peak_202608231210.jpeg",
+        portrait: "/vertical.png",
+        duration: 12,
+    },
+    {
+        id: "ravana-dhyan",
+        type: "image",
+        src: "/Deities_meditating_while_Ravana_._202608231209.jpeg",
+        duration: 12,
+    },
+    {
+        id: "sacred-fire",
+        type: "image",
+        src: "/Deities_standing_at_sacred_fire_202608231209.jpeg",
+        duration: 12,
+    },
     {
         id: "mahadev-landscape",
         type: "image",
         src: "/mahadev-landscape.png",
-        portrait: "/vertical.png",
-        duration: 8,
+        duration: 12,
     },
     {
-        id: "kailash",
+        id: "kailash-wide",
         type: "image",
         src: "/landscape.png",
-        portrait: "/landscape.png",
-        duration: 8,
+        duration: 12,
     },
-    // ── Add more images ──────────────────────────────────────────────
-    // { id: "shiva-temple", type: "image", src: "/shiva-temple.jpg", duration: 8 },
-    //
     // ── Add videos ──────────────────────────────────────────────────
     // Videos must be muted to auto-play in browsers.
     // Leave `duration` unset (or 0) to let the video play to its end.
@@ -51,4 +65,4 @@ export const BACKGROUNDS: BgMedia[] = [
 ];
 
 /** Fallback duration (seconds) if `duration` is not set on an image entry */
-export const DEFAULT_SLIDE_DURATION = 8;
+export const DEFAULT_SLIDE_DURATION = 12;

@@ -2,19 +2,10 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { track } from "@vercel/analytics/react";
+import { PlaylistPanel } from "./components/PlaylistPanel";
+import type { Track } from "./lib/types";
 
-// ─────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────
-export type Track = {
-    id: string;
-    title: string;
-    artist: string;
-    year: number;
-    duration: number;
-    videoId: string;
-    url?: string;
-};
+export type { Track };
 
 // ─────────────────────────────────────────
 // HELPERS
@@ -43,6 +34,11 @@ const IcoPlay = () => <Ico d="M8 5v14l11-7z" />;
 const IcoPause = () => <Ico d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />;
 const IcoPrev = () => <Ico d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />;
 const IcoNext = () => <Ico d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />;
+const IcoList = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+        <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+    </svg>
+);
 
 // ─────────────────────────────────────────
 // SEEKBAR  — isolated so only THIS subtree
@@ -218,6 +214,8 @@ export function ClientApp({
     const [idx, setIdx] = useState(0);
     // Runtime title override: YT iframe getVideoData() is more accurate than oEmbed
     const [meta, setMeta] = useState<Record<string, { title: string; artist: string }>>({});
+    const [queueOpen, setQueueOpen] = useState(false);
+    const [queueFocus, setQueueFocus] = useState(0);
 
     const tracks = playlists[listKey] ?? [];
     const track = tracks[idx] ?? { videoId: "", title: "", artist: "" };
@@ -225,9 +223,9 @@ export function ClientApp({
     const displayArtist = meta[track.videoId]?.artist || track.artist;
 
     // ── Stable ref snapshot (allows callbacks without stale closure) ──
-    const snap = useRef({ playing, idx, listKey, tracks, duration });
+    const snap = useRef({ playing, idx, listKey, tracks, duration, queueOpen, queueFocus });
     useEffect(() => {
-        snap.current = { playing, idx, listKey, tracks, duration };
+        snap.current = { playing, idx, listKey, tracks, duration, queueOpen, queueFocus };
     });
 
     // ── Capture real metadata from YT engine ──
@@ -241,6 +239,7 @@ export function ClientApp({
     // ── Navigation ──
     const goNext = useCallback((auto = false) => {
         const { idx, tracks, playing } = snap.current;
+        if (!tracks.length) return;
         const next = (idx + 1) % tracks.length;
         setIdx(next);
         if (auto || playing) ytRef.current?.loadVideoById?.(tracks[next].videoId);
@@ -249,6 +248,7 @@ export function ClientApp({
 
     const goPrev = useCallback(() => {
         const { idx, tracks, playing } = snap.current;
+        if (!tracks.length) return;
         const prev = (idx - 1 + tracks.length) % tracks.length;
         setIdx(prev);
         if (playing) ytRef.current?.loadVideoById?.(tracks[prev].videoId);
@@ -257,8 +257,101 @@ export function ClientApp({
 
     const togglePlay = useCallback(() => {
         if (!ytRef.current) return;
-        snap.current.playing ? ytRef.current.pauseVideo() : ytRef.current.playVideo();
+        if (snap.current.playing) ytRef.current.pauseVideo();
+        else ytRef.current.playVideo();
     }, []);
+
+    const playAt = useCallback((i: number) => {
+        const { tracks } = snap.current;
+        if (!tracks[i]) return;
+        setIdx(i);
+        setQueueFocus(i);
+        ytRef.current?.loadVideoById?.(tracks[i].videoId);
+        setQueueOpen(false);
+    }, []);
+
+    const seekBy = useCallback((delta: number) => {
+        const player = ytRef.current;
+        if (!player?.getCurrentTime) return;
+        const now = player.getCurrentTime() ?? 0;
+        const dur = snap.current.duration || player.getDuration?.() || 0;
+        const next = Math.max(0, Math.min(dur || now + delta, now + delta));
+        player.seekTo?.(next, true);
+    }, []);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            const el = e.target as HTMLElement | null;
+            if (el?.closest("input, textarea, select, [contenteditable='true']")) return;
+
+            if (e.key === "Escape") {
+                setQueueOpen(false);
+                return;
+            }
+
+            const onButton = Boolean(el?.closest("button, a"));
+            const queue = snap.current.queueOpen;
+            const len = snap.current.tracks.length;
+
+            if (queue && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === "Home" || e.key === "End")) {
+                e.preventDefault();
+                if (e.key === "Enter") {
+                    playAt(snap.current.queueFocus);
+                    return;
+                }
+                setQueueFocus((f) => {
+                    if (!len) return 0;
+                    if (e.key === "Home") return 0;
+                    if (e.key === "End") return len - 1;
+                    if (e.key === "ArrowDown") return (f + 1) % len;
+                    return (f - 1 + len) % len;
+                });
+                return;
+            }
+
+            switch (e.key) {
+                case " ":
+                    if (onButton) return;
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case "ArrowRight":
+                    e.preventDefault();
+                    seekBy(5);
+                    break;
+                case "ArrowLeft":
+                    e.preventDefault();
+                    seekBy(-5);
+                    break;
+                case "n":
+                case "N":
+                    if (onButton) return;
+                    e.preventDefault();
+                    goNext();
+                    break;
+                case "p":
+                case "P":
+                    if (onButton) return;
+                    e.preventDefault();
+                    goPrev();
+                    break;
+                case "q":
+                case "Q":
+                    if (onButton) return;
+                    e.preventDefault();
+                    setQueueOpen((v) => {
+                        if (!v) setQueueFocus(snap.current.idx);
+                        return !v;
+                    });
+                    break;
+                default:
+                    break;
+            }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [togglePlay, goNext, goPrev, seekBy, playAt]);
 
     // ── YouTube IFrame bootstrap (runs once on mount) ──
     useEffect(() => {
@@ -370,6 +463,17 @@ export function ClientApp({
                 </div>
 
                 {/* Controls */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setQueueFocus(idx);
+                        setQueueOpen(true);
+                    }}
+                    aria-label="Open playlist"
+                    className="flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 shrink-0"
+                >
+                    <IcoList />
+                </button>
                 <Transport playing={playing} onPrev={goPrev} onPlay={togglePlay} onNext={goNext} />
             </div>
 
@@ -401,12 +505,43 @@ export function ClientApp({
                     <Seekbar ytRef={ytRef} playing={playing} duration={duration} />
                 </div>
 
-                {/* Time + Controls row */}
-                <div className="w-full px-5 pb-5 flex items-center justify-between">
+                <div className="w-full px-5 flex items-center justify-between">
                     <TimeLabel ytRef={ytRef} playing={playing} duration={duration} />
+                    <button
+                        type="button"
+                        onClick={() => {
+                        setQueueFocus(idx);
+                        setQueueOpen(true);
+                    }}
+                        aria-label="Open playlist"
+                        className="flex items-center justify-center w-11 h-11 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+                    >
+                        <IcoList />
+                    </button>
+                </div>
+
+                <div className="w-full px-5 pb-5 flex items-center justify-center">
                     <Transport playing={playing} onPrev={goPrev} onPlay={togglePlay} onNext={goNext} large />
                 </div>
             </div>
+
+            <p className="hidden sm:block text-[10px] tracking-[0.18em] uppercase text-white/35 text-center">
+                Space play · Q playlist · N P tracks · ↑↓ queue · ← → seek
+            </p>
+
+            <PlaylistPanel
+                open={queueOpen}
+                tracks={tracks.map((t) => ({
+                    ...t,
+                    title: meta[t.videoId]?.title || t.title,
+                    artist: meta[t.videoId]?.artist || t.artist,
+                }))}
+                currentIdx={idx}
+                focusIdx={queueFocus}
+                listName={listKey}
+                onClose={() => setQueueOpen(false)}
+                onSelect={playAt}
+            />
 
             {/* ── Hidden YT iframe (YT Policy: must be visible but
              we tuck it behind the thumbnail at 1px in a fixed

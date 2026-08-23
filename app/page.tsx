@@ -1,18 +1,20 @@
 import { Clock } from "./components/Clock";
-import { ClientApp, Track } from "./ClientApp";
+import { ClientApp } from "./ClientApp";
+import type { Track } from "./lib/types";
+import { BackgroundSlideshow } from "./components/BackgroundSlideshow";
+import { JsonLd } from "./components/JsonLd";
 import fs from "fs/promises";
 import path from "path";
-import Image from "next/image";
 
 /**
- * Highly optimized, robust SSG parser of playlist URLs mapping to Track primitives.
+ * SSG parser of playlist URLs mapping to Track primitives.
  */
 async function getPlaylists(): Promise<Record<string, Track[]>> {
   const filePath = path.join(process.cwd(), "playlist.md");
   let content = "";
   try {
     content = await fs.readFile(filePath, "utf-8");
-  } catch (e) {
+  } catch {
     return { "Mahadev": [] };
   }
 
@@ -36,12 +38,11 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
         } else if (urlObj.hostname.includes('youtu.be')) {
           rawId = urlObj.pathname.slice(1);
         }
-      } catch (e) { }
+      } catch { }
 
-      // Securely strip any strange appended characters (YouTube IDs are strictly 11 standard characters)
-      const videoId = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
+      const videoId = rawId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 11);
 
-      if (videoId) {
+      if (videoId.length === 11) {
         playlists[currentPlaylist].push({
           id: videoId,
           videoId,
@@ -55,16 +56,13 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
     }
   }
 
-  // Next.js dynamic parallel fetches to YouTube oEmbed for pre-hydrated track data.
-  // Note: Vercel or local builds often fail this due to CORS/ratelimits, hence frontend healing exists.
   await Promise.all(
     Object.keys(playlists).map(async (playlistKey) => {
       await Promise.all(
-        playlists[playlistKey].map(async (track, index) => {
+        playlists[playlistKey].map(async (track) => {
           try {
             const standardUrl = `https://www.youtube.com/watch?v=${track.videoId}`;
             const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(standardUrl)}&format=json`, {
-              // Standard Next15 ISR cache headers
               next: { revalidate: 3600 }
             });
             if (res.ok) {
@@ -72,15 +70,14 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
               track.title = data.title;
               track.artist = data.author_name;
             }
-          } catch (err) {
-            // Silently fail during build, UI falls back to YouTube player injection.
+          } catch {
+            // UI falls back to YouTube player metadata.
           }
         })
       );
     })
   );
 
-  // GC empty playlists
   Object.keys(playlists).forEach(k => {
     if (playlists[k].length === 0) delete playlists[k];
   });
@@ -95,18 +92,16 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
 
 export default async function Home() {
   const playlists = await getPlaylists();
+  const trackCount = Object.values(playlists).reduce((n, t) => n + t.length, 0);
 
   return (
     <main className="relative flex min-h-dvh flex-1 flex-col items-center justify-between overflow-hidden z-0 bg-black">
+      <JsonLd playlists={playlists} />
 
-      {/* High Performance LCP Visuals */}
-      <Image src="/mahadev-landscape.png" alt="Background" fill className="object-cover fixed inset-0 z-0 hidden sm:block pointer-events-none animate-sway opacity-90" priority />
-      <Image src="/vertical.png" alt="Background" fill className="object-cover fixed inset-0 z-0 sm:hidden pointer-events-none animate-sway opacity-90" priority />
+      <BackgroundSlideshow />
 
-      {/* Immersive cinematic dimming gradient wrapper */}
       <div className="fixed inset-0 z-[1] bg-gradient-to-t from-black/95 via-black/40 to-black/80 pointer-events-none" />
 
-      {/* Hardware-accelerated Lofi Grain over the cinematic gradient */}
       <div className="fixed inset-0 z-[2] mix-blend-overlay opacity-30 pointer-events-none">
         <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
           <filter id="noiseFilter">
@@ -116,25 +111,54 @@ export default async function Home() {
         </svg>
       </div>
 
-      {/* Ultra minimal ambient header tier */}
-      <div className="fixed top-0 left-0 w-full pt-[max(1.5rem,env(safe-area-inset-top))] px-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] flex items-center justify-between pointer-events-none z-10">
+      <header className="fixed top-0 left-0 w-full pt-[max(1.5rem,env(safe-area-inset-top))] px-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] flex items-center justify-between pointer-events-none z-10">
         <div className="flex-1 pointer-events-auto pl-2">
           <Clock />
         </div>
-        <div className="flex-1 text-center font-medium text-white/40 text-[10px] tracking-[0.3em] uppercase drop-shadow-md">
-          • Live From Himalayas
+        <div className="flex-1 text-center pointer-events-none">
+          <p className="font-medium text-white/40 text-[10px] tracking-[0.3em] uppercase drop-shadow-md">
+            Live from Kailash
+          </p>
+          <h1 className="text-[11px] sm:text-sm font-semibold text-white/85 tracking-wide drop-shadow-md">
+            महादेव Songs Playlist
+          </h1>
         </div>
-        <div className="flex-1 text-right flex items-center justify-end gap-5 pointer-events-auto pr-2 text-[10px] font-medium tracking-widest text-white/50">
+        <div className="flex-1 text-right hidden sm:flex items-center justify-end gap-5 pointer-events-auto pr-2 text-[10px] font-medium tracking-widest text-white/50">
           <a href="#" className="hover:text-orange-400 transition-colors">TWITTER</a>
           <a href="#" className="hover:text-orange-400 transition-colors">GITHUB</a>
         </div>
-      </div>
+        <div className="flex-1 sm:hidden" />
+      </header>
 
       <div className="flex-1" />
 
-      {/* Ambient sleek player anchored deeply */}
       <div className="w-full max-w-[640px] pb-[max(2rem,env(safe-area-inset-bottom))] px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] z-10 pointer-events-auto">
         <ClientApp playlists={playlists} />
+        <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35 px-4">
+          Free {trackCount}-track Mahadev song playlist — Shiva bhajans, Har Har Mahadev, and bhakti radio.
+          Audio plays through YouTube; rights remain with the original artists and labels.
+        </p>
+        <section className="mt-4 mb-2 px-4 max-w-xl mx-auto text-white/40 text-[11px] leading-relaxed space-y-2">
+          <h2 className="text-center text-[10px] tracking-[0.2em] uppercase text-orange-300/70">
+            Mahadev songs &amp; Shiva bhajans
+          </h2>
+          <p>
+            A nonstop Mahadev playlist for darshan at home — Shiva bhajans, Har Har Mahadev tracks,
+            and the kindness of Bholenath. Press play; the mix stays on Mahadev’s story, not a generic 90s radio.
+          </p>
+          <details className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+            <summary className="cursor-pointer text-white/55">Where can I listen to a Mahadev songs playlist?</summary>
+            <p className="mt-2 text-white/35">
+              Here — no login. Open the queue (Q) to jump any track. Audio streams through YouTube.
+            </p>
+          </details>
+          <details className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+            <summary className="cursor-pointer text-white/55">What Mahadev songs are on this radio?</summary>
+            <p className="mt-2 text-white/35">
+              Shiva bhakti and film bhajans that carry Mahadev’s aura. Use N / P to skip, arrows to seek.
+            </p>
+          </details>
+        </section>
       </div>
     </main>
   );

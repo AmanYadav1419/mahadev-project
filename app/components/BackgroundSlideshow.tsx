@@ -1,110 +1,268 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BACKGROUNDS, DEFAULT_SLIDE_DURATION, BgMedia } from "@/app/constants/backgrounds";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    BACKGROUNDS,
+    DEFAULT_SLIDE_DURATION,
+    BgMedia,
+} from "@/app/constants/backgrounds";
 
-/**
- * BackgroundSlideshow
- *
- * Renders a fullscreen, auto-playing slideshow from the BACKGROUNDS constant.
- * Supports both <img> and <video> entries with smooth cross-fade transitions.
- *
- * Architecture notes (performance):
- *  • Two "slots" (A / B) are swapped alternately so we always cross-fade
- *    between the outgoing and incoming slide — no flicker, no black flash.
- *  • Videos mute-autoplay inline; for images we use a JS timer.
- *  • `will-change: opacity` is the only repaint layer we dirty.
- *  • The component re-renders only when the active index changes (~every N secs).
- */
-export function BackgroundSlideshow() {
-    // Which entry is currently "foreground"
-    const [activeIdx, setActiveIdx] = useState(0);
-    // CSS transition key: true = slot-A is foreground, false = slot-B
-    const [slotA, setSlotA] = useState(true);
+const FADE_MS = 1600;
+const LOAD_GRACE_MS = 2800;
+const KEN_VARIANTS = ["kenburns-a", "kenburns-b", "kenburns-c"] as const;
 
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-
-    // src helpers — choose portrait version on narrow screens at runtime
-    const portraitMq =
-        typeof window !== "undefined"
-            ? window.matchMedia("(orientation: portrait)").matches
-            : false;
-
-    const getSrc = (item: BgMedia) =>
-        portraitMq && item.portrait ? item.portrait : item.src;
-
-    const advance = () => {
-        setActiveIdx((prev) => (prev + 1) % BACKGROUNDS.length);
-        setSlotA((prev) => !prev); // toggle which slot is "front"
-    };
-
-    /** Schedule advancement for image slides */
-    const scheduleImage = (item: BgMedia) => {
-        const delay = (item.duration ?? DEFAULT_SLIDE_DURATION) * 1000;
-        timerRef.current = setTimeout(advance, delay);
-    };
-
-    /** For video slides, advance when the video ends (or after duration) */
-    const handleVideoEnd = () => advance();
+function useNarrowScreen() {
+    const [narrow, setNarrow] = useState(false);
 
     useEffect(() => {
-        // Clear any pending timer when slide changes
-        if (timerRef.current) clearTimeout(timerRef.current);
+        const mq = window.matchMedia("(max-width: 639px)");
+        const apply = () => setNarrow(mq.matches);
+        apply();
+        mq.addEventListener("change", apply);
+        return () => mq.removeEventListener("change", apply);
+    }, []);
 
-        const item = BACKGROUNDS[activeIdx];
+    return narrow;
+}
 
-        if (item.type === "image") {
-            scheduleImage(item);
+function useReducedMotion() {
+    const [reduced, setReduced] = useState(false);
+
+    useEffect(() => {
+        const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+        const apply = () => setReduced(mq.matches);
+        apply();
+        mq.addEventListener("change", apply);
+        return () => mq.removeEventListener("change", apply);
+    }, []);
+
+    return reduced;
+}
+
+function srcFor(item: BgMedia, narrow: boolean) {
+    return narrow && item.portrait ? item.portrait : item.src;
+}
+
+function SlideMedia({
+    item,
+    src,
+    active,
+    reducedMotion,
+    kenClass,
+    preload,
+    onReady,
+}: {
+    item: BgMedia;
+    src: string;
+    active: boolean;
+    reducedMotion: boolean;
+    kenClass: string;
+    preload?: boolean;
+    onReady?: () => void;
+}) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const readyOnce = useRef(false);
+
+    const markReady = useCallback(() => {
+        if (readyOnce.current) return;
+        readyOnce.current = true;
+        onReady?.();
+    }, [onReady]);
+
+    useEffect(() => {
+        readyOnce.current = false;
+    }, [src]);
+
+    useEffect(() => {
+        const el = videoRef.current;
+        if (!el || item.type !== "video") return;
+        if (active) {
+            if (el.paused) void el.play().catch(() => {});
+        } else {
+            el.pause();
         }
-        // For video: onEnded fires advance; no timer needed normally.
-        // If the video is a live stream or very long, rely on item.duration as fallback.
-        if (item.type === "video" && item.duration) {
-            timerRef.current = setTimeout(advance, item.duration * 1000);
-        }
+    }, [active, item.type]);
 
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeIdx]);
+    const ken = !reducedMotion && item.type === "image" ? kenClass : "";
 
-    // Pre-compute "current" and "next" slides for smooth cross-fade
-    const curr = BACKGROUNDS[activeIdx];
-    const currSrc = getSrc(curr);
+    if (item.type === "video") {
+        return (
+            <video
+                ref={videoRef}
+                src={src}
+                muted
+                playsInline
+                preload={active ? "auto" : "metadata"}
+                loop={!item.duration}
+                onCanPlay={markReady}
+                onLoadedData={markReady}
+                className="absolute inset-0 h-full w-full object-cover gpu-layer"
+            />
+        );
+    }
 
     return (
-        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
-            {BACKGROUNDS.map((item, i) => {
-                const isCurrent = i === activeIdx;
-                const src = getSrc(item);
+        <div className={`absolute inset-[-8%] ${ken}`}>
+            <Image
+                src={src}
+                alt=""
+                fill
+                sizes="100vw"
+                quality={70}
+                preload={preload}
+                decoding="async"
+                onLoad={markReady}
+                className="object-cover"
+                {...(preload ? {} : { loading: "eager" as const })}
+            />
+        </div>
+    );
+}
 
+/**
+ * Two stable GPU slots, Corporate Majdoor–style Ken Burns + opacity fade.
+ * The incoming slide is mounted (opacity 0) for the full dwell so it is
+ * decoded before the crossfade. Ken Burns never restarts on the visible slide.
+ */
+export function BackgroundSlideshow() {
+    const narrow = useNarrowScreen();
+    const reducedMotion = useReducedMotion();
+    const n = BACKGROUNDS.length;
+
+    const [slotA, setSlotA] = useState(0);
+    const [slotB, setSlotB] = useState(n > 1 ? 1 : 0);
+    const [front, setFront] = useState<"a" | "b">("a");
+    const [fading, setFading] = useState(false);
+    const [pageHidden, setPageHidden] = useState(false);
+
+    const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const dwellTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const graceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const fadingRef = useRef(false);
+    const backReadyRef = useRef(false);
+    const frontRef = useRef(front);
+    const slotARef = useRef(slotA);
+    const slotBRef = useRef(slotB);
+
+    useEffect(() => {
+        fadingRef.current = fading;
+        frontRef.current = front;
+        slotARef.current = slotA;
+        slotBRef.current = slotB;
+    }, [fading, front, slotA, slotB]);
+
+    const fadeMs = reducedMotion ? 0 : FADE_MS;
+    const frontIdx = front === "a" ? slotA : slotB;
+
+    const beginFade = useCallback(() => {
+        if (n < 2 || fadingRef.current || document.hidden) return;
+        fadingRef.current = true;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => setFading(true));
+        });
+    }, [n]);
+
+    const tryAdvance = useCallback(() => {
+        if (n < 2 || fadingRef.current || document.hidden) return;
+        if (backReadyRef.current || reducedMotion) {
+            beginFade();
+            return;
+        }
+        if (graceTimer.current) clearTimeout(graceTimer.current);
+        graceTimer.current = setTimeout(beginFade, LOAD_GRACE_MS);
+    }, [n, beginFade, reducedMotion]);
+
+    useEffect(() => {
+        const onVis = () => setPageHidden(document.hidden);
+        document.addEventListener("visibilitychange", onVis);
+        return () => document.removeEventListener("visibilitychange", onVis);
+    }, []);
+
+    useEffect(() => {
+        if (dwellTimer.current) clearTimeout(dwellTimer.current);
+        if (graceTimer.current) clearTimeout(graceTimer.current);
+        if (n < 2 || fading || pageHidden) return;
+
+        const item = BACKGROUNDS[frontIdx];
+        if (!item) return;
+        if (item.type === "video" && !item.duration) return;
+
+        const delay = (item.duration ?? DEFAULT_SLIDE_DURATION) * 1000;
+        dwellTimer.current = setTimeout(tryAdvance, delay);
+        return () => {
+            if (dwellTimer.current) clearTimeout(dwellTimer.current);
+        };
+    }, [frontIdx, fading, pageHidden, n, tryAdvance]);
+
+    useEffect(() => {
+        if (!fading) return;
+        if (fadeTimer.current) clearTimeout(fadeTimer.current);
+        fadeTimer.current = setTimeout(() => {
+            const nextFront = frontRef.current === "a" ? "b" : "a";
+            const visibleIdx = nextFront === "a" ? slotARef.current : slotBRef.current;
+            const upcoming = (visibleIdx + 1) % n;
+            setFront(nextFront);
+            if (nextFront === "a") setSlotB(upcoming);
+            else setSlotA(upcoming);
+            setFading(false);
+            fadingRef.current = false;
+            backReadyRef.current = false;
+        }, fadeMs);
+        return () => {
+            if (fadeTimer.current) clearTimeout(fadeTimer.current);
+        };
+    }, [fading, fadeMs, n]);
+
+    useEffect(
+        () => () => {
+            if (dwellTimer.current) clearTimeout(dwellTimer.current);
+            if (fadeTimer.current) clearTimeout(fadeTimer.current);
+            if (graceTimer.current) clearTimeout(graceTimer.current);
+        },
+        []
+    );
+
+    const onBackReady = useCallback(() => {
+        backReadyRef.current = true;
+    }, []);
+
+    if (n === 0) return null;
+
+    const layers: { slot: "a" | "b"; idx: number }[] = [{ slot: "a", idx: slotA }];
+    if (n > 1) layers.push({ slot: "b", idx: slotB });
+
+    return (
+        <div
+            className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slider"
+            aria-hidden="true"
+        >
+            {layers.map(({ slot, idx }) => {
+                const item = BACKGROUNDS[idx];
+                const isFront = slot === front;
+                const opacity = fading ? (isFront ? 0 : 1) : isFront ? 1 : 0;
+                const z = fading ? (isFront ? 1 : 2) : isFront ? 2 : 1;
                 return (
                     <div
-                        key={item.id}
-                        className="absolute inset-0 transition-opacity duration-[1800ms] ease-in-out will-change-[opacity]"
-                        style={{ opacity: isCurrent ? 1 : 0 }}
+                        key={slot}
+                        className="absolute inset-0 gpu-layer"
+                        style={{
+                            opacity,
+                            zIndex: z,
+                            transition: fadeMs
+                                ? `opacity ${fadeMs}ms cubic-bezier(0.4, 0, 0.2, 1)`
+                                : "none",
+                        }}
                     >
-                        {item.type === "image" ? (
-                            <img
-                                src={src}
-                                alt=""
-                                /* Eager-load the first slide, lazy-load the rest */
-                                loading={i === 0 ? "eager" : "lazy"}
-                                decoding="async"
-                                className="w-full h-full object-cover animate-sway"
-                            />
-                        ) : (
-                            <video
-                                src={src}
-                                autoPlay
-                                muted
-                                playsInline
-                                loop={!item.duration} /* loop only if no fixed duration */
-                                onEnded={handleVideoEnd}
-                                className="w-full h-full object-cover"
-                            />
-                        )}
+                        <SlideMedia
+                            item={item}
+                            src={srcFor(item, narrow)}
+                            active={isFront || fading}
+                            reducedMotion={reducedMotion}
+                            kenClass={KEN_VARIANTS[idx % KEN_VARIANTS.length]}
+                            preload={idx === 0 && isFront}
+                            onReady={isFront ? undefined : onBackReady}
+                        />
                     </div>
                 );
             })}

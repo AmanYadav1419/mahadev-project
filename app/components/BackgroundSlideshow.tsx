@@ -5,39 +5,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
     BACKGROUNDS,
     DEFAULT_SLIDE_DURATION,
-    BgMedia,
+    type BgMedia,
 } from "@/app/constants/backgrounds";
 
-const FADE_MS = 1600;
-const LOAD_GRACE_MS = 2800;
-const KEN_VARIANTS = ["kenburns-a", "kenburns-b", "kenburns-c"] as const;
+const FADE_MS = 2000;
+const KEN = ["kenburns-a", "kenburns-b", "kenburns-c"] as const;
 
-function useNarrowScreen() {
-    const [narrow, setNarrow] = useState(false);
-
+function useMq(query: string) {
+    const [on, setOn] = useState(false);
     useEffect(() => {
-        const mq = window.matchMedia("(max-width: 639px)");
-        const apply = () => setNarrow(mq.matches);
+        const mq = window.matchMedia(query);
+        const apply = () => setOn(mq.matches);
         apply();
         mq.addEventListener("change", apply);
         return () => mq.removeEventListener("change", apply);
-    }, []);
-
-    return narrow;
-}
-
-function useReducedMotion() {
-    const [reduced, setReduced] = useState(false);
-
-    useEffect(() => {
-        const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-        const apply = () => setReduced(mq.matches);
-        apply();
-        mq.addEventListener("change", apply);
-        return () => mq.removeEventListener("change", apply);
-    }, []);
-
-    return reduced;
+    }, [query]);
+    return on;
 }
 
 function srcFor(item: BgMedia, narrow: boolean) {
@@ -48,43 +31,46 @@ function SlideMedia({
     item,
     src,
     active,
-    reducedMotion,
     kenClass,
+    reduced,
     preload,
     onReady,
+    onFail,
 }: {
     item: BgMedia;
     src: string;
     active: boolean;
-    reducedMotion: boolean;
     kenClass: string;
+    reduced: boolean;
     preload?: boolean;
-    onReady?: () => void;
+    onReady: () => void;
+    onFail: () => void;
 }) {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const readyOnce = useRef(false);
+    const done = useRef(false);
 
-    const markReady = useCallback(() => {
-        if (readyOnce.current) return;
-        readyOnce.current = true;
-        onReady?.();
+    const ready = useCallback(() => {
+        if (done.current) return;
+        done.current = true;
+        onReady();
     }, [onReady]);
 
+    const fail = useCallback(() => {
+        if (done.current) return;
+        done.current = true;
+        onFail();
+    }, [onFail]);
+
     useEffect(() => {
-        readyOnce.current = false;
+        done.current = false;
     }, [src]);
 
     useEffect(() => {
         const el = videoRef.current;
         if (!el || item.type !== "video") return;
-        if (active) {
-            if (el.paused) void el.play().catch(() => {});
-        } else {
-            el.pause();
-        }
+        if (active) void el.play().catch(() => {});
+        else el.pause();
     }, [active, item.type]);
-
-    const ken = !reducedMotion && item.type === "image" ? kenClass : "";
 
     if (item.type === "video") {
         return (
@@ -95,12 +81,15 @@ function SlideMedia({
                 playsInline
                 preload={active ? "auto" : "metadata"}
                 loop={!item.duration}
-                onCanPlay={markReady}
-                onLoadedData={markReady}
+                onCanPlay={ready}
+                onError={fail}
                 className="absolute inset-0 h-full w-full object-cover gpu-layer"
             />
         );
     }
+
+    const png = src.toLowerCase().endsWith(".png");
+    const ken = !reduced ? kenClass : "";
 
     return (
         <div className={`absolute inset-[-8%] ${ken}`}>
@@ -110,9 +99,11 @@ function SlideMedia({
                 fill
                 sizes="100vw"
                 quality={70}
+                unoptimized={png}
                 preload={preload}
                 decoding="async"
-                onLoad={markReady}
+                onLoad={ready}
+                onError={fail}
                 className="object-cover"
                 {...(preload ? {} : { loading: "eager" as const })}
             />
@@ -120,112 +111,118 @@ function SlideMedia({
     );
 }
 
-/**
- * Two stable GPU slots, Corporate Majdoor–style Ken Burns + opacity fade.
- * The incoming slide is mounted (opacity 0) for the full dwell so it is
- * decoded before the crossfade. Ken Burns never restarts on the visible slide.
- */
 export function BackgroundSlideshow() {
-    const narrow = useNarrowScreen();
-    const reducedMotion = useReducedMotion();
+    const narrow = useMq("(max-width: 639px)");
+    const reduced = useMq("(prefers-reduced-motion: reduce)");
     const n = BACKGROUNDS.length;
 
     const [slotA, setSlotA] = useState(0);
     const [slotB, setSlotB] = useState(n > 1 ? 1 : 0);
     const [front, setFront] = useState<"a" | "b">("a");
     const [fading, setFading] = useState(false);
-    const [pageHidden, setPageHidden] = useState(false);
+    const [hidden, setHidden] = useState(false);
+    const [readyA, setReadyA] = useState(false);
+    const [readyB, setReadyB] = useState(false);
 
-    const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const dwellTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const graceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fadingRef = useRef(false);
-    const backReadyRef = useRef(false);
     const frontRef = useRef(front);
-    const slotARef = useRef(slotA);
-    const slotBRef = useRef(slotB);
+    const aRef = useRef(slotA);
+    const bRef = useRef(slotB);
+    const readyARef = useRef(false);
+    const readyBRef = useRef(false);
+    const dwell = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const fadeT = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         fadingRef.current = fading;
         frontRef.current = front;
-        slotARef.current = slotA;
-        slotBRef.current = slotB;
-    }, [fading, front, slotA, slotB]);
+        aRef.current = slotA;
+        bRef.current = slotB;
+        readyARef.current = readyA;
+        readyBRef.current = readyB;
+    }, [fading, front, slotA, slotB, readyA, readyB]);
 
-    const fadeMs = reducedMotion ? 0 : FADE_MS;
+    const fadeMs = reduced ? 0 : FADE_MS;
     const frontIdx = front === "a" ? slotA : slotB;
+    const backReady = front === "a" ? readyB : readyA;
 
     const beginFade = useCallback(() => {
         if (n < 2 || fadingRef.current || document.hidden) return;
+        const incomingReady = frontRef.current === "a" ? readyBRef.current : readyARef.current;
+        if (!incomingReady) return;
         fadingRef.current = true;
         requestAnimationFrame(() => {
             requestAnimationFrame(() => setFading(true));
         });
     }, [n]);
 
-    const tryAdvance = useCallback(() => {
-        if (n < 2 || fadingRef.current || document.hidden) return;
-        if (backReadyRef.current || reducedMotion) {
-            beginFade();
-            return;
+    const skipBrokenBack = useCallback(() => {
+        const f = frontRef.current;
+        const backIdx = f === "a" ? bRef.current : aRef.current;
+        const next = (backIdx + 1) % n;
+        if (next === (f === "a" ? aRef.current : bRef.current)) return;
+        if (f === "a") {
+            setSlotB(next);
+            setReadyB(false);
+            readyBRef.current = false;
+        } else {
+            setSlotA(next);
+            setReadyA(false);
+            readyARef.current = false;
         }
-        if (graceTimer.current) clearTimeout(graceTimer.current);
-        graceTimer.current = setTimeout(beginFade, LOAD_GRACE_MS);
-    }, [n, beginFade, reducedMotion]);
+    }, [n]);
 
     useEffect(() => {
-        const onVis = () => setPageHidden(document.hidden);
+        const onVis = () => setHidden(document.hidden);
         document.addEventListener("visibilitychange", onVis);
         return () => document.removeEventListener("visibilitychange", onVis);
     }, []);
 
     useEffect(() => {
-        if (dwellTimer.current) clearTimeout(dwellTimer.current);
-        if (graceTimer.current) clearTimeout(graceTimer.current);
-        if (n < 2 || fading || pageHidden) return;
-
+        if (dwell.current) clearTimeout(dwell.current);
+        if (n < 2 || fading || hidden) return;
         const item = BACKGROUNDS[frontIdx];
-        if (!item) return;
-        if (item.type === "video" && !item.duration) return;
-
+        if (!item || (item.type === "video" && !item.duration)) return;
         const delay = (item.duration ?? DEFAULT_SLIDE_DURATION) * 1000;
-        dwellTimer.current = setTimeout(tryAdvance, delay);
+        dwell.current = setTimeout(() => {
+            if (frontRef.current === "a" ? readyBRef.current : readyARef.current) beginFade();
+            else skipBrokenBack();
+        }, delay);
         return () => {
-            if (dwellTimer.current) clearTimeout(dwellTimer.current);
+            if (dwell.current) clearTimeout(dwell.current);
         };
-    }, [frontIdx, fading, pageHidden, n, tryAdvance]);
+    }, [frontIdx, fading, hidden, n, beginFade, skipBrokenBack, backReady]);
 
     useEffect(() => {
         if (!fading) return;
-        if (fadeTimer.current) clearTimeout(fadeTimer.current);
-        fadeTimer.current = setTimeout(() => {
+        if (fadeT.current) clearTimeout(fadeT.current);
+        fadeT.current = setTimeout(() => {
             const nextFront = frontRef.current === "a" ? "b" : "a";
-            const visibleIdx = nextFront === "a" ? slotARef.current : slotBRef.current;
-            const upcoming = (visibleIdx + 1) % n;
+            const vis = nextFront === "a" ? aRef.current : bRef.current;
+            const upcoming = (vis + 1) % n;
             setFront(nextFront);
-            if (nextFront === "a") setSlotB(upcoming);
-            else setSlotA(upcoming);
+            if (nextFront === "a") {
+                setSlotB(upcoming);
+                setReadyB(false);
+            } else {
+                setSlotA(upcoming);
+                setReadyA(false);
+            }
             setFading(false);
             fadingRef.current = false;
-            backReadyRef.current = false;
         }, fadeMs);
         return () => {
-            if (fadeTimer.current) clearTimeout(fadeTimer.current);
+            if (fadeT.current) clearTimeout(fadeT.current);
         };
     }, [fading, fadeMs, n]);
 
     useEffect(
         () => () => {
-            if (dwellTimer.current) clearTimeout(dwellTimer.current);
-            if (fadeTimer.current) clearTimeout(fadeTimer.current);
-            if (graceTimer.current) clearTimeout(graceTimer.current);
+            if (dwell.current) clearTimeout(dwell.current);
+            if (fadeT.current) clearTimeout(fadeT.current);
         },
         []
     );
-
-    const onBackReady = useCallback(() => {
-        backReadyRef.current = true;
-    }, []);
 
     if (n === 0) return null;
 
@@ -233,14 +230,12 @@ export function BackgroundSlideshow() {
     if (n > 1) layers.push({ slot: "b", idx: slotB });
 
     return (
-        <div
-            className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slider"
-            aria-hidden="true"
-        >
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slider bg-black" aria-hidden>
             {layers.map(({ slot, idx }) => {
                 const item = BACKGROUNDS[idx];
                 const isFront = slot === front;
-                const opacity = fading ? (isFront ? 0 : 1) : isFront ? 1 : 0;
+                const ready = slot === "a" ? readyA : readyB;
+                const opacity = !ready ? 0 : fading ? (isFront ? 0 : 1) : isFront ? 1 : 0;
                 const z = fading ? (isFront ? 1 : 2) : isFront ? 2 : 1;
                 return (
                     <div
@@ -249,19 +244,27 @@ export function BackgroundSlideshow() {
                         style={{
                             opacity,
                             zIndex: z,
-                            transition: fadeMs
-                                ? `opacity ${fadeMs}ms cubic-bezier(0.4, 0, 0.2, 1)`
-                                : "none",
+                            transition: fadeMs ? `opacity ${fadeMs}ms cubic-bezier(0.22, 1, 0.36, 1)` : "none",
                         }}
                     >
                         <SlideMedia
                             item={item}
                             src={srcFor(item, narrow)}
                             active={isFront || fading}
-                            reducedMotion={reducedMotion}
-                            kenClass={KEN_VARIANTS[idx % KEN_VARIANTS.length]}
+                            kenClass={KEN[idx % KEN.length]}
+                            reduced={reduced}
                             preload={idx === 0 && isFront}
-                            onReady={isFront ? undefined : onBackReady}
+                            onReady={() => (slot === "a" ? setReadyA(true) : setReadyB(true))}
+                            onFail={() => {
+                                const next = (idx + 1) % n;
+                                if (slot === "a") {
+                                    setSlotA(next);
+                                    setReadyA(false);
+                                } else {
+                                    setSlotB(next);
+                                    setReadyB(false);
+                                }
+                            }}
                         />
                     </div>
                 );

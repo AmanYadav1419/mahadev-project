@@ -100,7 +100,7 @@ export default async function Home() {
 
       <BackgroundSlideshow />
 
-      <div className="fixed inset-0 z-[1] bg-gradient-to-t from-black/95 via-black/40 to-black/80 pointer-events-none" />
+      <div className="fixed inset-0 z-[1] bg-gradient-to-t from-black/80 via-black/25 to-black/50 pointer-events-none" />
 
       <div className="fixed inset-0 z-[2] mix-blend-overlay opacity-30 pointer-events-none">
         <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
@@ -138,6 +138,7 @@ export default async function Home() {
           Free {trackCount}-track Mahadev song playlist — Shiva bhajans, Har Har Mahadev, and bhakti radio.
           Audio plays through YouTube; rights remain with the original artists and labels.
         </p>
+        {/* SEO copy parked — restore when the player layout needs it
         <section className="mt-4 mb-2 px-4 max-w-xl mx-auto text-white/40 text-[11px] leading-relaxed space-y-2">
           <h2 className="text-center text-[10px] tracking-[0.2em] uppercase text-orange-300/70">
             Mahadev songs &amp; Shiva bhajans
@@ -159,6 +160,7 @@ export default async function Home() {
             </p>
           </details>
         </section>
+        */}
       </div>
     </main>
   );

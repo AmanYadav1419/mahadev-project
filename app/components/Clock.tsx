@@ -29,7 +29,7 @@ export function Clock() {
     const rest = parts.slice(1).join(":");
 
     return (
-        <span className="tabular-nums tracking-widest text-sm font-medium">
+        <span className="tabular-nums tracking-widest text-xs sm:text-sm font-medium">
             {hour}
             <span className="animate-blink opacity-100 transition-opacity duration-100">:</span>
             {rest}

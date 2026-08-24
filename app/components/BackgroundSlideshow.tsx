@@ -33,6 +33,7 @@ function SlideMedia({
     active,
     kenClass,
     reduced,
+    cover,
     preload,
     onReady,
     onFail,
@@ -42,6 +43,7 @@ function SlideMedia({
     active: boolean;
     kenClass: string;
     reduced: boolean;
+    cover: boolean;
     preload?: boolean;
     onReady: () => void;
     onFail: () => void;
@@ -91,25 +93,25 @@ function SlideMedia({
     const png = src.toLowerCase().endsWith(".png");
     const ken = !reduced ? kenClass : "";
 
-    // General-purpose fit: any image, any aspect ratio, any screen —
-    // never cropped, always centered. A blurred cover copy fills the
-    // frame edge-to-edge (no black bars); the real image sits on top
-    // at object-contain so the full frame is always visible & centered.
+    // Desktop: contain the full cinematic frame over a blurred fill.
+    // Mobile: cover the portrait viewport so the scene fills the screen.
     return (
         <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute inset-[-8%] scale-110">
-                <Image
-                    src={src}
-                    alt=""
-                    fill
-                    sizes="100vw"
-                    quality={40}
-                    unoptimized={png}
-                    aria-hidden="true"
-                    className="object-cover blur-2xl opacity-60"
-                />
-            </div>
-            <div className={`absolute inset-[-8%] ${ken}`}>
+            {!cover && (
+                <div className="absolute inset-[-8%] scale-110">
+                    <Image
+                        src={src}
+                        alt=""
+                        fill
+                        sizes="100vw"
+                        quality={40}
+                        unoptimized={png}
+                        aria-hidden="true"
+                        className="object-cover blur-2xl opacity-60"
+                    />
+                </div>
+            )}
+            <div className={`absolute ${cover ? "inset-0" : "inset-[-8%]"} ${ken}`}>
                 <Image
                     src={src}
                     alt=""
@@ -121,7 +123,7 @@ function SlideMedia({
                     decoding="async"
                     onLoad={ready}
                     onError={fail}
-                    className="object-contain object-center"
+                    className={cover ? "object-cover object-[center_30%]" : "object-contain object-center"}
                     {...(preload ? {} : { loading: "eager" as const })}
                 />
             </div>
@@ -271,6 +273,7 @@ export function BackgroundSlideshow() {
                             active={isFront || fading}
                             kenClass={KEN[idx % KEN.length]}
                             reduced={reduced}
+                            cover={narrow}
                             preload={idx === 0 && isFront}
                             onReady={() => (slot === "a" ? setReadyA(true) : setReadyB(true))}
                             onFail={() => {

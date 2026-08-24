@@ -106,7 +106,7 @@ export default async function Home() {
   const trackCount = Object.values(playlists).reduce((n, t) => n + t.length, 0);
 
   return (
-    <main className="relative flex min-h-dvh flex-1 flex-col items-center justify-between overflow-hidden z-0 bg-black">
+    <main className="relative flex min-h-dvh flex-1 flex-col items-center justify-between overflow-x-hidden overflow-y-hidden z-0 bg-black">
       <JsonLd playlists={playlists} />
 
       <BackgroundSlideshow />
@@ -127,19 +127,19 @@ export default async function Home() {
         </svg>
       </div>
 
-      <header className="fixed top-0 left-0 w-full pt-[max(1.5rem,env(safe-area-inset-top))] px-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] flex items-center justify-between pointer-events-none z-10">
-        <div className="flex-1 pointer-events-auto pl-2">
+      <header className="fixed top-0 left-0 w-full max-w-[100%] pt-[max(0.85rem,env(safe-area-inset-top))] px-[max(0.85rem,env(safe-area-inset-left))] pr-[max(0.85rem,env(safe-area-inset-right))] sm:pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] flex items-center justify-between pointer-events-none z-10">
+        <div className="pointer-events-auto pl-1 sm:pl-2 shrink-0">
           <Clock />
         </div>
-        <div className="flex-1 text-center pointer-events-none">
-          <p className="font-medium text-white/40 text-[10px] tracking-[0.3em] uppercase drop-shadow-md">
+        <div className="absolute left-1/2 -translate-x-1/2 top-[max(0.85rem,env(safe-area-inset-top))] sm:top-[max(1.5rem,env(safe-area-inset-top))] w-[min(58vw,16rem)] sm:w-auto text-center pointer-events-none">
+          <p className="font-medium text-white/40 text-[9px] sm:text-[10px] tracking-[0.22em] sm:tracking-[0.3em] uppercase drop-shadow-md">
             Live from Kailash
           </p>
-          <h1 className="text-[11px] sm:text-sm font-semibold text-white/85 tracking-wide drop-shadow-md">
+          <h1 className="text-[11px] sm:text-sm font-semibold text-white/85 tracking-wide drop-shadow-md leading-tight">
             महादेव Songs Playlist
           </h1>
         </div>
-        <div className="flex-1 text-right hidden sm:flex items-center justify-end gap-5 pointer-events-auto pr-2 text-[10px] font-medium tracking-widest text-white/50">
+        <nav className="hidden sm:flex items-center justify-end gap-5 pointer-events-auto pr-2 text-[10px] font-medium tracking-widest text-white/50">
           <a
             href="https://www.instagram.com/aman_yadav1419/"
             target="_blank"
@@ -164,15 +164,14 @@ export default async function Home() {
           >
             Portfolio
           </a>
-        </div>
-        <div className="flex-1 sm:hidden" />
+        </nav>
       </header>
 
       <div className="flex-1" />
 
-      <div className="w-full max-w-[640px] pb-[max(2rem,env(safe-area-inset-bottom))] px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] z-10 pointer-events-auto">
+      <div className="w-full max-w-[640px] min-w-0 pb-[max(1rem,env(safe-area-inset-bottom))] px-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] z-10 pointer-events-auto">
         <ClientApp playlists={playlists} />
-        <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35 px-4">
+        <p className="mt-2 sm:mt-3 text-center text-[10px] sm:text-[11px] leading-relaxed text-white/35 px-2 sm:px-4">
           Free {trackCount}-track Mahadev song playlist — Shiva bhajans, Har Har
           Mahadev, and bhakti radio. Audio plays through YouTube; rights remain
           with the original artists and labels.

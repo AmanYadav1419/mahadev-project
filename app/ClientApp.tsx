@@ -40,6 +40,36 @@ const IcoList = () => (
     </svg>
 );
 
+function VinylArt({
+    videoId,
+    title,
+    playing,
+    className,
+}: {
+    videoId: string;
+    title: string;
+    playing: boolean;
+    className: string;
+}) {
+    return (
+        <div className={`relative shrink-0 rounded-full overflow-hidden ring-1 ring-white/15 ${className}`}>
+            {videoId && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                    key={videoId}
+                    src={thumb(videoId)}
+                    alt={title}
+                    className="w-full h-full object-cover animate-[spin_20s_linear_infinite]"
+                    style={{ animationPlayState: playing ? "running" : "paused" }}
+                />
+            )}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-black/80 ring-2 ring-white/30" />
+            </div>
+        </div>
+    );
+}
+
 // ─────────────────────────────────────────
 // SEEKBAR  — isolated so only THIS subtree
 //            re-renders every 400 ms, not the full player
@@ -431,38 +461,18 @@ export function ClientApp({
             )}
 
             {/* ── DESKTOP PLAYER  ─  horizontal pill ─────────────── */}
-            <div className={`hidden sm:flex w-full items-center gap-4 rounded-full px-3 py-3 ${glass}`}>
+            <div className={`hidden sm:flex w-full min-w-0 items-center gap-4 rounded-full px-3 py-3 ${glass}`}>
+                <VinylArt videoId={track.videoId} title={displayTitle} playing={playing} className="w-[72px] h-[72px]" />
 
-                {/* Cover: thumbnail from YT CDN (no 3rd-party host, no 16:9 crop) */}
-                <div className="relative w-[72px] h-[72px] shrink-0 rounded-full overflow-hidden ring-1 ring-white/15">
-                    {track.videoId && (
-                        <img
-                            key={track.videoId}
-                            src={thumb(track.videoId)}
-                            alt={displayTitle}
-                            /* YouTube thumbnails are 16:9 — we display in
-                               a square circle so we object-cover center */
-                            className="w-full h-full object-cover animate-[spin_20s_linear_infinite]"
-                            style={{ animationPlayState: playing ? "running" : "paused" }}
-                        />
-                    )}
-                    {/* Spindle hole */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-3 h-3 rounded-full bg-black/80 ring-2 ring-white/30" />
-                    </div>
-                </div>
-
-                {/* Track info + seek bar */}
                 <div className="flex-1 flex flex-col justify-center min-w-0 gap-0.5">
                     <p className="text-[14px] font-semibold text-white leading-tight truncate">{displayTitle}</p>
                     <p className="text-[11.5px] text-white/50 truncate">{displayArtist}</p>
-                    <div className="flex items-center gap-3 mt-1">
+                    <div className="flex items-center gap-3 mt-1 min-w-0">
                         <Seekbar ytRef={ytRef} playing={playing} duration={duration} />
                         <TimeLabel ytRef={ytRef} playing={playing} duration={duration} />
                     </div>
                 </div>
 
-                {/* Controls */}
                 <button
                     type="button"
                     onClick={() => {
@@ -477,43 +487,23 @@ export function ClientApp({
                 <Transport playing={playing} onPrev={goPrev} onPlay={togglePlay} onNext={goNext} />
             </div>
 
-            {/* ── MOBILE PLAYER  ─  stacked card ──────────────────── */}
-            <div className={`sm:hidden w-full rounded-[24px] flex flex-col items-center gap-0 overflow-hidden ${glass}`}>
-
-                {/* Top banner: thumbnail letterboxed, height capped so it
-                    never eats the transport controls on short viewports */}
-                <div className="relative w-full aspect-video max-h-[32vh] bg-black overflow-hidden">
-                    {track.videoId && (
-                        <img
-                            key={track.videoId}
-                            src={thumb(track.videoId)}
-                            alt={displayTitle}
-                            className="w-full h-full object-cover"
-                        />
-                    )}
-                    {/* Subtle bottom gradient blending into card */}
-                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
-                </div>
-
-                {/* Info row */}
-                <div className="w-full px-4 pt-3 pb-0 min-w-0">
-                    <p className="text-[15px] font-semibold text-white leading-tight truncate">{displayTitle}</p>
-                    <p className="text-[12px] text-white/50 mt-0.5 truncate">{displayArtist}</p>
-                </div>
-
-                {/* Seek */}
-                <div className="w-full px-3">
-                    <Seekbar ytRef={ytRef} playing={playing} duration={duration} />
-                </div>
-
-                <div className="w-full px-4 flex items-center justify-between gap-2">
-                    <TimeLabel ytRef={ytRef} playing={playing} duration={duration} />
+            {/* ── MOBILE PLAYER  ─  compact dock (keeps art small so the
+                background stays visible; same handlers as desktop) ── */}
+            <div className={`sm:hidden w-full min-w-0 rounded-[22px] flex flex-col px-3 pt-3 pb-3 ${glass}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                    <VinylArt videoId={track.videoId} title={displayTitle} playing={playing} className="w-14 h-14" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold text-white leading-snug line-clamp-2 break-words">
+                            {displayTitle}
+                        </p>
+                        <p className="text-[12px] text-white/50 mt-0.5 truncate">{displayArtist}</p>
+                    </div>
                     <button
                         type="button"
                         onClick={() => {
-                        setQueueFocus(idx);
-                        setQueueOpen(true);
-                    }}
+                            setQueueFocus(idx);
+                            setQueueOpen(true);
+                        }}
                         aria-label="Open playlist"
                         className="flex items-center justify-center w-11 h-11 shrink-0 rounded-full text-white/70 hover:text-white hover:bg-white/10"
                     >
@@ -521,8 +511,16 @@ export function ClientApp({
                     </button>
                 </div>
 
-                <div className="w-full px-4 pb-4 flex items-center justify-center">
+                <div className="w-full min-w-0 -my-1">
+                    <Seekbar ytRef={ytRef} playing={playing} duration={duration} />
+                </div>
+
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div className="min-w-0 overflow-hidden">
+                        <TimeLabel ytRef={ytRef} playing={playing} duration={duration} />
+                    </div>
                     <Transport playing={playing} onPrev={goPrev} onPlay={togglePlay} onNext={goNext} large />
+                    <div aria-hidden="true" />
                 </div>
             </div>
 

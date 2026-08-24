@@ -309,6 +309,41 @@ export function ClientApp({
         player.seekTo?.(next, true);
     }, []);
 
+    // ── Media Session ──
+    // Mobile Chrome/Android suspends background-tab media that has no
+    // registered Media Session — that's why audio was cutting out the
+    // moment the app was minimized. Registering one (metadata + action
+    // handlers) marks this as a real "now playing" session, which keeps
+    // it exempt from that suspension and adds lock-screen/notification
+    // transport controls as a bonus.
+    useEffect(() => {
+        if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+        navigator.mediaSession.setActionHandler("play", () => ytRef.current?.playVideo?.());
+        navigator.mediaSession.setActionHandler("pause", () => ytRef.current?.pauseVideo?.());
+        navigator.mediaSession.setActionHandler("previoustrack", () => goPrev());
+        navigator.mediaSession.setActionHandler("nexttrack", () => goNext());
+        return () => {
+            navigator.mediaSession.setActionHandler("play", null);
+            navigator.mediaSession.setActionHandler("pause", null);
+            navigator.mediaSession.setActionHandler("previoustrack", null);
+            navigator.mediaSession.setActionHandler("nexttrack", null);
+        };
+    }, [goPrev, goNext]);
+
+    useEffect(() => {
+        if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !track.videoId) return;
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: displayTitle,
+            artist: displayArtist,
+            artwork: [{ src: thumb(track.videoId), sizes: "480x360", type: "image/jpeg" }],
+        });
+    }, [track.videoId, displayTitle, displayArtist]);
+
+    useEffect(() => {
+        if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+        navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+    }, [playing]);
+
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if (e.metaKey || e.ctrlKey || e.altKey) return;

@@ -2,6 +2,7 @@ import { Clock } from "./components/Clock";
 import { ClientApp } from "./ClientApp";
 import type { Track } from "./lib/types";
 import { BackgroundSlideshow } from "./components/BackgroundSlideshow";
+import { CreatorCard } from "./components/CreatorCard";
 import { JsonLd } from "./components/JsonLd";
 import fs from "fs/promises";
 import path from "path";
@@ -127,7 +128,7 @@ export default async function Home() {
         </svg>
       </div>
 
-      <header className="fixed top-0 left-0 w-full max-w-[100%] pt-[max(0.85rem,env(safe-area-inset-top))] px-[max(0.85rem,env(safe-area-inset-left))] pr-[max(0.85rem,env(safe-area-inset-right))] sm:pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] flex items-center justify-between pointer-events-none z-10">
+      <header className="fixed top-0 left-0 w-full max-w-[100%] pt-[max(0.85rem,env(safe-area-inset-top))] px-[max(0.85rem,env(safe-area-inset-left))] pr-[max(0.85rem,env(safe-area-inset-right))] sm:pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] flex items-center justify-between pointer-events-none z-30">
         <div className="pointer-events-auto pl-1 sm:pl-2 shrink-0">
           <Clock />
         </div>
@@ -139,32 +140,9 @@ export default async function Home() {
             महादेव Songs Playlist
           </h1>
         </div>
-        <nav className="hidden sm:flex items-center justify-end gap-5 pointer-events-auto pr-2 text-[10px] font-medium tracking-widest text-white/50">
-          <a
-            href="https://www.instagram.com/aman_yadav1419/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-orange-400 transition-colors"
-          >
-            Instagram
-          </a>
-          <a
-            href="https://x.com/Aman_Yadav1419"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-orange-400 transition-colors"
-          >
-            Twitter
-          </a>
-          <a
-            href="https://aman-yadav1419-portfolio.vercel.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-orange-400 transition-colors"
-          >
-            Portfolio
-          </a>
-        </nav>
+        <div className="flex items-center justify-end shrink-0 pointer-events-auto">
+          <CreatorCard />
+        </div>
       </header>
 
       <div className="flex-1" />

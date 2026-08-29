@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Mahadev Songs Playlist — Shiva bhajans and bhakti radio";
+export const alt = "Divine Devotional Songs Playlist — Bhajans, Aartis & Bhakti Radio";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -20,15 +20,15 @@ export default function Image() {
         }}
       >
         <div style={{ fontSize: 22, letterSpacing: 8, textTransform: "uppercase", color: "#fb923c" }}>
-          Live from Kailash
+          Divine Bhakti Radio
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontSize: 72, fontWeight: 700 }}>महादेव</div>
+          <div style={{ fontSize: 72, fontWeight: 700 }}>दिव्य भक्ति</div>
           <div style={{ fontSize: 40, color: "rgba(255,255,255,0.85)" }}>
-            Mahadev Songs Playlist
+            Devotional Songs Playlist
           </div>
           <div style={{ fontSize: 24, color: "rgba(255,255,255,0.55)" }}>
-            Shiva bhajans · Har Har Mahadev · free bhakti radio
+            Bhajans · Aartis · Free Bhakti Radio
           </div>
         </div>
       </div>

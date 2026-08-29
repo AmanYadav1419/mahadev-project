@@ -4,7 +4,7 @@
 
 A free devotional songs playlist featuring bhajans, aartis, and bhakti radio. Stream Mahadev bhajans, Ganpati Bappa aartis, and more — no login required.
 
-[Live Demo](https://divine-bhakti-radio.vercel.app) • [Report Issue](https://github.com/AmanYadav1419/mahadev-project/issues) • [Request Feature](https://github.com/AmanYadav1419/mahadev-project/issues)
+[Live Demo](https://bhakti-geet-aman.vercel.app/) • [Report Issue](https://github.com/AmanYadav1419/bhakti-geet-aman/issues) • [Request Feature](https://github.com/AmanYadav1419/bhakti-geet-aman/issues)
 
 </div>
 

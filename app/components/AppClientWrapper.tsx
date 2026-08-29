@@ -95,7 +95,6 @@ export function AppClientWrapper({ playlists }: AppClientWrapperProps) {
                     Also passing onPlaylistChange callback to sync internal playlist changes.
                 */}
                 <ClientApp 
-                    key={currentPlaylist} 
                     playlists={playlists} 
                     externalPlaylistKey={currentPlaylist}
                     onPlaylistChange={handleInternalPlaylistChange}

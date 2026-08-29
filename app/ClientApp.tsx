@@ -244,10 +244,11 @@ export function ClientApp({
     // ── State (minimal — avoids render cascade) ──
     const [playing, setPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
+    const [playerReady, setPlayerReady] = useState(false);
     // Initialize playlist from externalPlaylistKey if provided, otherwise use first available playlist
     const [listKey, setListKey] = useState(
-        (externalPlaylistKey && playlists[externalPlaylistKey]) 
-            ? externalPlaylistKey 
+        (externalPlaylistKey && playlists[externalPlaylistKey])
+            ? externalPlaylistKey
             : Object.keys(playlists)[0] ?? ""
     );
     const [idx, setIdx] = useState(0);
@@ -266,6 +267,22 @@ export function ClientApp({
     useEffect(() => {
         snap.current = { playing, idx, listKey, tracks, duration, queueOpen, queueFocus };
     });
+
+    // ── Handle external playlist changes (from DeitySwitcher) ──
+    useEffect(() => {
+        if (externalPlaylistKey && playlists[externalPlaylistKey] && externalPlaylistKey !== listKey) {
+            setListKey(externalPlaylistKey);
+            setIdx(0);
+            setPlaying(false);
+            // Load the first video of the new playlist after a short delay to ensure player is ready
+            setTimeout(() => {
+                const firstTrack = playlists[externalPlaylistKey][0];
+                if (firstTrack && ytRef.current?.loadVideoById) {
+                    ytRef.current?.loadVideoById?.(firstTrack.videoId);
+                }
+            }, 100);
+        }
+    }, [externalPlaylistKey]);
 
     // ── Capture real metadata from YT engine ──
     const captureVideoData = useCallback((player: any, videoId: string) => {
@@ -296,8 +313,8 @@ export function ClientApp({
 
     const togglePlay = useCallback(() => {
         if (!ytRef.current) return;
-        if (snap.current.playing) ytRef.current.pauseVideo();
-        else ytRef.current.playVideo();
+        if (snap.current.playing) ytRef.current?.pauseVideo?.();
+        else ytRef.current?.playVideo?.();
     }, []);
 
     const playAt = useCallback((i: number) => {
@@ -439,6 +456,7 @@ export function ClientApp({
                 },
                 events: {
                     onReady: (e: any) => {
+                        setPlayerReady(true);
                         setDuration(e.target.getDuration());
                         captureVideoData(e.target, track.videoId);
                     },
@@ -477,7 +495,7 @@ export function ClientApp({
         onPlaylistChange?.(key);
         const first = playlists[key]?.[0];
         if (first && ytRef.current?.loadVideoById) {
-            ytRef.current.loadVideoById(first.videoId);
+            ytRef.current?.loadVideoById?.(first.videoId);
             setPlaying(true);
         }
     };

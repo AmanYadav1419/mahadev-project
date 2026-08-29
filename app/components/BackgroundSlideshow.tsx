@@ -131,10 +131,16 @@ function SlideMedia({
     );
 }
 
-export function BackgroundSlideshow() {
+export function BackgroundSlideshow({ currentPlaylist }: { currentPlaylist?: string }) {
     const narrow = useMq("(max-width: 639px)");
     const reduced = useMq("(prefers-reduced-motion: reduce)");
-    const n = BACKGROUNDS.length;
+    
+    // Filter backgrounds by playlist if specified, otherwise show all
+    const filteredBackgrounds = currentPlaylist 
+        ? BACKGROUNDS.filter(bg => !bg.playlist || bg.playlist === currentPlaylist)
+        : BACKGROUNDS;
+    
+    const n = filteredBackgrounds.length;
 
     const [slotA, setSlotA] = useState(0);
     const [slotB, setSlotB] = useState(n > 1 ? 1 : 0);
@@ -201,7 +207,7 @@ export function BackgroundSlideshow() {
     useEffect(() => {
         if (dwell.current) clearTimeout(dwell.current);
         if (n < 2 || fading || hidden) return;
-        const item = BACKGROUNDS[frontIdx];
+        const item = filteredBackgrounds[frontIdx];
         if (!item || (item.type === "video" && !item.duration)) return;
         const delay = (item.duration ?? DEFAULT_SLIDE_DURATION) * 1000;
         dwell.current = setTimeout(() => {
@@ -211,7 +217,7 @@ export function BackgroundSlideshow() {
         return () => {
             if (dwell.current) clearTimeout(dwell.current);
         };
-    }, [frontIdx, fading, hidden, n, beginFade, skipBrokenBack, backReady]);
+    }, [frontIdx, fading, hidden, n, beginFade, skipBrokenBack, backReady, filteredBackgrounds]);
 
     useEffect(() => {
         if (!fading) return;
@@ -252,7 +258,7 @@ export function BackgroundSlideshow() {
     return (
         <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slider bg-black" aria-hidden>
             {layers.map(({ slot, idx }) => {
-                const item = BACKGROUNDS[idx];
+                const item = filteredBackgrounds[idx];
                 const isFront = slot === front;
                 const ready = slot === "a" ? readyA : readyB;
                 const opacity = !ready ? 0 : fading ? (isFront ? 0 : 1) : isFront ? 1 : 0;

@@ -23,40 +23,73 @@ export type BgMedia = {
     portrait?: string;
     /** Seconds this slide is visible before auto-advancing */
     duration?: number;
+    /** Optional playlist association - shows only when this playlist is active */
+    playlist?: string;
 };
 
 /** Master list — edit freely. Prefer JPEG/WebP over large PNGs. */
 export const BACKGROUNDS: BgMedia[] = [
+    // Mahadev backgrounds
     {
         id: "kailash-peak",
         type: "image",
         src: "/Deities_meditating_on_mountain_peak_202608231210.jpeg",
         portrait: "/vertical.png",
         duration: 12,
+        playlist: "Mahadev Songs",
     },
     {
         id: "ravana-dhyan",
         type: "image",
         src: "/deities-meditating-ravana.jpeg",
         duration: 12,
+        playlist: "Mahadev Songs",
     },
     {
         id: "sacred-fire",
         type: "image",
         src: "/Deities_standing_at_sacred_fire_202608231209.jpeg",
         duration: 12,
+        playlist: "Mahadev Songs",
     },
     {
         id: "mahadev-landscape",
         type: "image",
         src: "/mahadev-landscape.png",
         duration: 12,
+    playlist: "Mahadev Songs",
     },
     {
         id: "kailash-wide",
         type: "image",
         src: "/landscape.png",
         duration: 12,
+        playlist: "Mahadev Songs",
+    },
+    // Ganpati Bappa backgrounds
+    {
+        id: "ganpati-1",
+        type: "image",
+        src: "/Lord_Ganesha_seated_on_throne.jpeg",
+        portrait: "/Lord_Ganesha_seated_on_throne.jpeg",
+        duration: 12,
+        playlist: "Ganpati Bappa Songs",
+    },
+    {
+        id: "ganpati-2",
+        type: "image",
+        src: "/Ganesha_riding_lion_on_battlefield_202608282249.jpeg",
+        portrait: "/Ganesha_riding_lion_on_battlefield_202608282249.jpeg",
+        duration: 12,
+        playlist: "Ganpati Bappa Songs",
+    },
+    {
+        id: "ganpati-3",
+        type: "image",
+        src: "/ChatGPT Image Aug 28, 2026, 10_49_25 PM.png",
+        portrait: "/ChatGPT Image Aug 28, 2026, 10_49_25 PM.png",
+        duration: 12,
+        playlist: "Ganpati Bappa Songs",
     },
     // ── Add videos ──────────────────────────────────────────────────
     // Videos must be muted to auto-play in browsers.

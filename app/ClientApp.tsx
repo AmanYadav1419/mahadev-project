@@ -232,8 +232,10 @@ declare global {
 // ─────────────────────────────────────────
 export function ClientApp({
     playlists,
+    externalPlaylistKey,
 }: {
     playlists: Record<string, Track[]>;
+    externalPlaylistKey?: string;
 }) {
     const ytRef = useRef<any>(null);
 
@@ -257,6 +259,19 @@ export function ClientApp({
     useEffect(() => {
         snap.current = { playing, idx, listKey, tracks, duration, queueOpen, queueFocus };
     });
+
+    // ── Handle external playlist changes ──
+    useEffect(() => {
+        if (externalPlaylistKey && externalPlaylistKey !== listKey && playlists[externalPlaylistKey]) {
+            setListKey(externalPlaylistKey);
+            setIdx(0);
+            const first = playlists[externalPlaylistKey]?.[0];
+            if (first && ytRef.current?.loadVideoById) {
+                ytRef.current.loadVideoById(first.videoId);
+                setPlaying(true);
+            }
+        }
+    }, [externalPlaylistKey, listKey, playlists]);
 
     // ── Capture real metadata from YT engine ──
     const captureVideoData = useCallback((player: any, videoId: string) => {

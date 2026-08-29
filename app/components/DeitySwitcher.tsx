@@ -58,7 +58,6 @@ export function DeitySwitcher({ onPlaylistChange, currentPlaylist }: DeitySwitch
                             <button
                                 key={option.name}
                                 onClick={() => {
-                                    console.log('DeitySwitcher - clicked option:', option.name);
                                     // Notify parent of playlist change and close dropdown
                                     onPlaylistChange(option.name);
                                     setIsOpen(false);

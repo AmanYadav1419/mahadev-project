@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { ClientApp } from "../ClientApp";
 import { BackgroundSlideshow } from "./BackgroundSlideshow";
 import { DynamicHeader } from "./DynamicHeader";
@@ -19,7 +19,6 @@ export function AppClientWrapper({ playlists }: AppClientWrapperProps) {
      * This updates the state which triggers a re-render of ClientApp with the new playlist
      */
     const handlePlaylistChange = (playlistName: string) => {
-        console.log('AppClientWrapper - handlePlaylistChange called with:', playlistName);
         setCurrentPlaylist(playlistName);
     };
 
@@ -28,14 +27,8 @@ export function AppClientWrapper({ playlists }: AppClientWrapperProps) {
      * This syncs the wrapper state with the player's internal playlist state
      */
     const handleInternalPlaylistChange = (playlistName: string) => {
-        console.log('AppClientWrapper - internal playlist change to:', playlistName);
         setCurrentPlaylist(playlistName);
     };
-
-    // Debug: log when currentPlaylist changes
-    useEffect(() => {
-        console.log('AppClientWrapper - currentPlaylist changed to:', currentPlaylist);
-    }, [currentPlaylist]);
 
     /**
      * Get dynamic description text based on current playlist

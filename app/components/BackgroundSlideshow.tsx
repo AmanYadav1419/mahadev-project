@@ -143,13 +143,6 @@ export function BackgroundSlideshow({ currentPlaylist }: { currentPlaylist?: str
     
     const n = filteredBackgrounds.length;
 
-    // Debug: log when playlist changes and filtered backgrounds
-    useEffect(() => {
-        console.log('BackgroundSlideshow - currentPlaylist:', currentPlaylist);
-        console.log('BackgroundSlideshow - filteredBackgrounds count:', n);
-        console.log('BackgroundSlideshow - filtered IDs:', filteredBackgrounds.map(bg => bg.id));
-    }, [currentPlaylist, n, filteredBackgrounds]);
-
     const [slotA, setSlotA] = useState(0);
     const [slotB, setSlotB] = useState(n > 1 ? 1 : 0);
     const [front, setFront] = useState<"a" | "b">("a");

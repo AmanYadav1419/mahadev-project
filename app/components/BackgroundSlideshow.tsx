@@ -143,13 +143,6 @@ export function BackgroundSlideshow({ currentPlaylist }: { currentPlaylist?: str
     
     const n = filteredBackgrounds.length;
 
-    // Debug: log when playlist changes and filtered backgrounds
-    useEffect(() => {
-        console.log('BackgroundSlideshow - currentPlaylist:', currentPlaylist);
-        console.log('BackgroundSlideshow - filteredBackgrounds count:', n);
-        console.log('BackgroundSlideshow - filtered IDs:', filteredBackgrounds.map(bg => bg.id));
-    }, [currentPlaylist, n, filteredBackgrounds]);
-
     const [slotA, setSlotA] = useState(0);
     const [slotB, setSlotB] = useState(n > 1 ? 1 : 0);
     const [front, setFront] = useState<"a" | "b">("a");
@@ -159,16 +152,6 @@ export function BackgroundSlideshow({ currentPlaylist }: { currentPlaylist?: str
     const [readyB, setReadyB] = useState(false);
 
     const fadingRef = useRef(false);
-
-    // Reset slideshow state when playlist changes to show new backgrounds
-    useEffect(() => {
-        setSlotA(0);
-        setSlotB(n > 1 ? 1 : 0);
-        setFront("a");
-        setFading(false);
-        setReadyA(false);
-        setReadyB(false);
-    }, [currentPlaylist, n]);
     const frontRef = useRef(front);
     const aRef = useRef(slotA);
     const bRef = useRef(slotB);
@@ -176,6 +159,19 @@ export function BackgroundSlideshow({ currentPlaylist }: { currentPlaylist?: str
     const readyBRef = useRef(false);
     const dwell = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fadeT = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Reset slideshow state when playlist changes to ensure proper animation
+    useEffect(() => {
+        setSlotA(0);
+        setSlotB(n > 1 ? 1 : 0);
+        setFront("a");
+        setFading(false);
+        setReadyA(false);
+        setReadyB(false);
+        // Clear any pending timeouts
+        if (dwell.current) clearTimeout(dwell.current);
+        if (fadeT.current) clearTimeout(fadeT.current);
+    }, [currentPlaylist, n]);
 
     useEffect(() => {
         fadingRef.current = fading;

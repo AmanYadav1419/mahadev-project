@@ -45,7 +45,7 @@ async function getPlaylists(): Promise<Record<string, Track[]>> {
           id: videoId,
           videoId,
           title: "Connecting...",
-          artist: "Mahadev Radio",
+          artist: "Divine Bhakti Radio",
           year: new Date().getFullYear(),
           duration: 0,
           url: trimmed,

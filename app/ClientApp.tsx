@@ -233,16 +233,23 @@ declare global {
 export function ClientApp({
     playlists,
     externalPlaylistKey,
+    onPlaylistChange,
 }: {
     playlists: Record<string, Track[]>;
     externalPlaylistKey?: string;
+    onPlaylistChange?: (playlistName: string) => void;
 }) {
     const ytRef = useRef<any>(null);
 
     // ── State (minimal — avoids render cascade) ──
     const [playing, setPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
-    const [listKey, setListKey] = useState(Object.keys(playlists)[0] ?? "");
+    // Initialize playlist from externalPlaylistKey if provided, otherwise use first available playlist
+    const [listKey, setListKey] = useState(
+        (externalPlaylistKey && playlists[externalPlaylistKey]) 
+            ? externalPlaylistKey 
+            : Object.keys(playlists)[0] ?? ""
+    );
     const [idx, setIdx] = useState(0);
     // Runtime title override: YT iframe getVideoData() is more accurate than oEmbed
     const [meta, setMeta] = useState<Record<string, { title: string; artist: string }>>({});
@@ -259,19 +266,6 @@ export function ClientApp({
     useEffect(() => {
         snap.current = { playing, idx, listKey, tracks, duration, queueOpen, queueFocus };
     });
-
-    // ── Handle external playlist changes ──
-    useEffect(() => {
-        if (externalPlaylistKey && externalPlaylistKey !== listKey && playlists[externalPlaylistKey]) {
-            setListKey(externalPlaylistKey);
-            setIdx(0);
-            const first = playlists[externalPlaylistKey]?.[0];
-            if (first && ytRef.current?.loadVideoById) {
-                ytRef.current.loadVideoById(first.videoId);
-                setPlaying(true);
-            }
-        }
-    }, [externalPlaylistKey, listKey, playlists]);
 
     // ── Capture real metadata from YT engine ──
     const captureVideoData = useCallback((player: any, videoId: string) => {
@@ -479,6 +473,8 @@ export function ClientApp({
         if (key === listKey) return;
         setListKey(key);
         setIdx(0);
+        // Notify parent of playlist change to sync backgrounds
+        onPlaylistChange?.(key);
         const first = playlists[key]?.[0];
         if (first && ytRef.current?.loadVideoById) {
             ytRef.current.loadVideoById(first.videoId);
